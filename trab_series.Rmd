@@ -1,0 +1,83 @@
+---
+title: "Ajuste de um modelo em uma série temporal com tendência e/ou sazonalidade"
+author: "Guilherme dos Santos"
+date: "30/03/2019"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(warning = F, message = F)
+```
+
+
+  A série escolhida para ajustar um dos modelos de suavização exponencial foi a série de Produção de Bens Intermediários. A série contém observações de janeiro de 2002 a março de 2018. Serão reservados os dois últimos anos para previsão.
+
+#Importando a série temporal utilizando o pacote BETS
+```{r message = FALSE, warning=FALSE}
+library(BETS)
+
+data <- BETSget(21864)
+
+#gráfico da série
+plot(data, ylab = "PBI (Número índice)", main = "")
+abline(v = seq(2002,2018,1), col = "gray60", lty = 3)
+```
+
+
+# Ajuste do modelo e previsão
+ Como a série apresenta tendência e sazonalidade o modelo escolhido foi a suavização exponencial de Holt-Winters.
+```{r message = FALSE}
+library(forecast)
+
+#deixando 2 anos para previsão
+data_sub <- window(data, start = c(2002, 1), end = c(2016,3)) 
+
+#Ajuste
+modelo <- HoltWinters(data_sub)
+plot(modelo, main = "Ajuste do modelo")
+summary(modelo)
+```
+
+
+```{r}
+#previsão
+prev <- forecast(modelo)
+plot(prev, main = "Previsão")
+```
+ 
+ Vemos que a previsão tem período parecido com o da série, mas as previsões pontuais variam menos do que as observações até o ponto em que se inicia a previsão.
+ 
+# Comparação da previsão pontual com os valores reais
+ No gráfico abaixo comparamos os valores reais (em preto) e os preditos (em vermelho).
+```{r}
+prev <- as.data.frame(prev)
+preditos <- ts(prev$`Point Forecast`, start = c(2016,4), end = c(2018,3), frequency = 12)
+reais <- window(data, start = c(2016, 4), end = c(2018, 3))
+plot(reais, ylab = NULL, main = "Comparação da previsão com valores reais")
+lines(preditos, col = 2)
+legend("topleft", legend=c("Preditos", "Reais"),
+       col=c("red", "black"), lty=1, cex=0.8)
+```
+  
+  Vemos que na maioria dos pontos, a previsão pontual foi inferior ao valor real no momento, isto é, a previsão pontual do modelo subestima a Produção de Bens intermediários. No entanto, segue razoalvente bem o comportamento da série.
+
+# Checando se os intervalos de confiança contêm o valor real
+```{r}
+lower <- prev$`Lo 80`
+upper <- prev$`Hi 80`
+
+cat("Quantidade de valores reais que estavam contidos no intervalo de 80%:",sum(lower <= reais & reais <= upper))
+
+cat("Quantidade de valores reais que estavam contidos no intervalo de 95%:",sum(prev$`Lo 95` <= reais & reais <= prev$`Hi 95`))
+```
+
+  Como, na maioria dos casos, apenas as estimativas pontuais não são suficientes para tirar conclusões sobre um modelo, verificamos também se o valor real está contido dentro dos intervalos de confiança de 80% e 95%.
+  
+  Vimos acima que `r sum(lower <= reais & reais <= upper)` dos 24 valores reais estavam realmente contidos no intervalo de confiança de 80%. Mais ainda, todos os 24 valores reais estavam contidos no intervalo de 95% de confiança.
+
+
+
