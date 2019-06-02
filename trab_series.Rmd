@@ -39,7 +39,7 @@ data_sub <- window(data, start = c(2002, 1), end = c(2016,3))
 #Ajuste
 modelo <- HoltWinters(data_sub)
 plot(modelo, main = "Ajuste do modelo")
-summary(modelo)
+modelo
 ```
 
 
